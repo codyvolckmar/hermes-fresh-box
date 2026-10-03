@@ -1,0 +1,26 @@
+What it does, in order
+
+Pre-flight — detects distro (apt/dnf/pacman/zypper/apk), user, sudo, and refuses non-Linux.
+System packages — nine groups, idempotent, apt installs with --no-install-recommends and only the packages that are actually missing and available in the repo (so Ubuntu 24.04/Mint's libasound2 → libasound2t64 transition resolves itself instead of aborting):
+Group
+Contents
+base	curl, ca-certificates, gnupg, git, build-essential, pkg-config, unzip/zip/xz/tar, rsync, jq, tmux, screen, less, nano, wget
+python	python3, venv, dev, pip, setuptools, libffi-dev
+search	ripgrep, fd-find, fzf
+media	ffmpeg, imagemagick
+browser	full Playwright/Chromium runtime set (libnss3, libatk*, libgbm1, libcups2, libasound2, at-spi, fonts-liberation, noto-emoji, xdg-utils…)
+computer-use	xdotool, wmctrl, x11-utils, xauth, xclip, scrot, dbus-x11, libnotify, at-spi2-core — the X11 automation surface the cua-driver toolset drives
+secrets	gnome-keyring, libsecret-1-0, libsecret-tools (API key storage)
+monitoring	htop, procps, psmisc, lsof, net-tools, iproute2, tree, ncdu
+voice	portaudio19-dev, libportaudio2, espeak-ng, sox
+--headless	xvfb, x11vnc, openbox, xterm (VNC survives reboot)
+--include-desktop	gtk3/notify/xtst/nss/gbm/alsa + rpm, fakeroot, dpkg for the Electron build
+Official installer — downloads install.sh to a temp file first (piping to bash masks curl failures), validates the header really is the Hermes installer, then bash -s -- with your flags. --auto adds --non-interactive --skip-setup; everything after -- passes through (./hermes-fresh-box.sh -- --skip-browser --no-skills). It re-exports HERMES_HOME.
+PATH + verify — ensures ~/.local/bin on PATH, prints versions of git/rg/ffmpeg/node/npm/python3/uv/xdotool/xvfb-run/x11vnc/sqlite3/tmux, then runs hermes doctor. Full transcript tees to ~/hermes-fresh-box.log.
+Verified here: bash -n clean; --dry-run on this Mint 22.3 box correctly resolved which packages are missing vs. present; --minimal, --headless, --include-desktop group selection; argument passthrough (STUB-GOT-ARGS: --non-interactive --skip-setup --skip-browser); the header guard accepts the real 42,569-byte installer and refuses a non-Hermes file.
+
+Usage on the fresh box:
+
+scp /home/cody/hermes-fresh-box.sh user@box:~/
+ssh user@box 'chmod +x hermes-fresh-box.sh && ./hermes-fresh-box.sh --headless'
+Sudo is cached once for the package phase; the installer itself needs no root afterwards. If you want, I can add a systemd unit for the x11vnc/resume part so the VNC server comes back after reboot without a local login.
